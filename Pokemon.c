@@ -40,7 +40,7 @@ graph *createGraph(int vertices)
     g->adjl = (node **)malloc((vertices + 1) * sizeof(node *)); // adjacency list
     g->visit = (int *)malloc((vertices + 1) * sizeof(int));     // array to  check visited or not
 
-    for (int i = 1; i <= vertices; i++)
+    for (int i = 0; i < vertices; i++)
     {
         g->adjl[i] = NULL;
         g->visit[i] = 0;
@@ -279,6 +279,44 @@ void DFS(graph *g, node *v)
     }
 }
 
+int isCyclicUtil(int v, int *visit,
+                 int *path, graph *g)
+{
+    if (visit[v] == 0)
+    {
+        visit[v] = 1;
+        path[v] = 1;
+        node *cnct = g->adjl[v];
+        while (cnct != NULL)
+        {
+            if (visit[cnct->data] == 0 && isCyclicUtil(cnct->data, visit, path, g))
+                return 1;
+            else if (path[cnct->data])
+                return 1;
+            cnct = cnct->next;
+        }
+    }
+    path[v] = 0;
+    return 0;
+}
+
+int isCyclic(graph *g)
+{
+    int *visit = (int *)malloc((g->numV) * sizeof(int));
+    int *path = (int *)malloc((g->numV) * sizeof(int));
+    for (int i = 0; i < g->numV; i++)
+    {
+        visit[i] = 0;
+        path[i] = 0;
+    }
+
+    for (int i = 0; i < g->numV; i++)
+        if (visit[i] == 0 && isCyclicUtil(i, visit, path, g))
+            return 1;
+
+    return 0;
+}
+
 int main()
 {
     int n, m, i;
@@ -295,6 +333,21 @@ int main()
     }
 
     int *dist = (int *)malloc((n + 1) * sizeof(int));
-    node *source = createNode(3);
-    BFS(g, source, dist, n);
+    if (isCyclic(g))
+    {
+        printf("unconquerable\n");
+        return 0;
+    }
+    else
+    {
+        printf("huh?\n");
+        return 0;
+    }
+    return 0;
 }
+
+// 4 4
+// 1 0
+// 2 0
+// 3 1
+// 3 2

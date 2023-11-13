@@ -6,21 +6,22 @@ typedef struct node
 {
     int data; // id of the vertex
     struct node *next;
-
 } node;
 
 typedef struct
 {
     int front, rear;
     int size;
-    node **array;
+    int *array;
 } Queue;
+
 // --------------------------------------------GRAPH DEFS---------------------------------------------------------
 typedef struct graph
 {
     int numV;
     node **adjl; // adjacency list
     int *visit;  // visited
+    int *prt;
 } graph;
 
 node *createNode(int val)
@@ -39,11 +40,13 @@ graph *createGraph(int vertices)
     g->numV = vertices;
     g->adjl = (node **)malloc((vertices + 1) * sizeof(node *)); // adjacency list
     g->visit = (int *)malloc((vertices + 1) * sizeof(int));     // array to  check visited or not
+    g->prt = (int *)malloc((vertices + 1) * sizeof(int));
 
     for (int i = 1; i <= vertices; i++)
     {
         g->adjl[i] = NULL;
         g->visit[i] = 0;
+        g->prt[i] = 0;
     }
 
     return g;
@@ -55,6 +58,7 @@ void addEdge(graph *g, int src, int dest)
     newNode->next = g->adjl[src]; // access the latest addition in the adjacency list
     g->adjl[src] = newNode;
 }
+
 //-------------------------------------------------QUEUE--------------------------------------------------------------
 // A utility function to create a new Queue
 Queue *createQueue(int size)
@@ -64,11 +68,11 @@ Queue *createQueue(int size)
     queue->front = queue->rear = -1;
     queue->size = size;
 
-    queue->array = (node **)malloc(queue->size * sizeof(node *));
+    queue->array = (int *)malloc(queue->size * sizeof(int));
 
     int i;
     for (i = 0; i < size; ++i)
-        queue->array[i] = NULL;
+        queue->array[i] = 0;
 
     return queue;
 }
@@ -88,7 +92,7 @@ int hasOnlyOneItem(Queue *queue)
     return queue->front == queue->rear;
 }
 
-void Enqueue(node *root, Queue *queue)
+void Enqueue(int root, Queue *queue)
 {
     if (isFull(queue))
         return;
@@ -104,7 +108,7 @@ Queue *Dequeue(Queue *queue)
     if (isEmpty(queue))
         return NULL;
 
-    node *temp = queue->array[queue->front];
+    int temp = queue->array[queue->front];
 
     if (hasOnlyOneItem(queue))
         queue->front = queue->rear = -1;
@@ -114,43 +118,19 @@ Queue *Dequeue(Queue *queue)
     return queue;
 }
 
-node *getFront(Queue *queue)
+int getFront(Queue *queue)
 {
     return queue->array[queue->front];
 }
 
-//---------------------------------------------PRIORITY Q-------------------------------------------------------
+//---------------------------------------------PRIORITY Q-------------------------------------------------------//
 #define MAX 1000
 int size;
 typedef struct
 {
     int priority; // dist
-    node *vertex;
+    int vertex;
 } heap;
-int root()
-{
-    return 1;
-}
-int parent(int n)
-{
-    return n / 2;
-}
-int lchild(int n)
-{
-    return 2 * n;
-}
-int rchild(int n)
-{
-    return 2 * n + 1;
-}
-bool has_parent(int n)
-{
-    return n != root();
-}
-bool is_node(int n)
-{
-    return n <= size;
-}
 void swap(heap *a, heap *b)
 {
     heap temp = *a;
@@ -164,14 +144,14 @@ int get_min(heap h[])
         printf("Empty priority queue!!");
         exit(0);
     }
-    return h[root()].priority;
+    return h[1].priority;
 }
 void heap_up(heap h[], int n)
 {
-    while (has_parent(n) && (h[parent(n)].priority > h[n].priority)) // > for min
+    while (n != 1 && (h[n / 2].priority > h[n].priority)) // > for min
     {
-        swap(&h[parent(n)], &h[n]);
-        n = parent(n);
+        swap(&h[n / 2], &h[n]);
+        n = n / 2;
     }
 }
 void push(heap h[], heap new_element)
@@ -187,11 +167,11 @@ void push(heap h[], heap new_element)
 }
 void heap_dwn(heap h[], int n) // logn
 {
-    while (is_node(lchild(n)))
+    while (2 * n <= size)
     {
-        int child = lchild(n);
-        if (is_node(rchild(n)) && (h[rchild(n)].priority < h[lchild(n)].priority)) // < for min
-            child = rchild(n);
+        int child = 2 * n;
+        if (2 * n + 1 <= size && (h[2 * n + 1].priority < h[2 * n].priority)) // < for min
+            child = 2 * n + 1;
 
         if (h[n].priority > h[child].priority) // > for min
             swap(&h[n], &h[child]);
@@ -209,7 +189,7 @@ void pop(heap h[]) // log n
     }
     h[1] = h[size]; // maintain complete tree
     size--;
-    heap_dwn(h, root());
+    heap_dwn(h, 1);
 }
 void build_heap(int arr[], heap h[], int n) // n
 {
@@ -226,35 +206,36 @@ void heap_sort(int arr[], int n) // nlogn
     build_heap(arr, h, n);
     while (n)
     {
-        arr[sz - n] = h[root()].priority; // n-1 for descending
+        arr[sz - n] = h[1].priority; // n-1 for descending
         pop(h);
         n--;
     };
 }
-//---------------------------------------------------------TRAVERSALS---------------------------------------------------------
-void BFS(graph *g, node *src, int *dist, int vertices)
+
+//---------------------------------------------------------TRAVERSALS-------------------------------------------------------//
+void BFS(graph *g, int src, int *dist, int vertices)
 {
-    dist[src->data] = 0;
-    g->visit[src->data] = 1;
+    dist[src] = 0;
+    g->visit[src] = 1;
 
     Queue *q = createQueue(vertices + 1);
     Enqueue(src, q);
 
-    node *cur, *child;
+    int cur, child;
 
     while (!isEmpty(q))
     {
         cur = getFront(q);
         q = Dequeue(q);
-        printf("%d\n", cur->data);
-        node *cnct = g->adjl[cur->data];
+        printf("%d\n", cur);
+        node *cnct = g->adjl[cur];
         while (cnct != NULL)
         {
-            child = cnct;
-            if (g->visit[child->data] != 1)
+            child = cnct->data;
+            if (g->visit[child] != 1)
             {
-                g->visit[child->data] = 1;
-                dist[child->data] = dist[cur->data] + 1;
+                g->visit[child] = 1;
+                dist[child] = dist[cur] + 1;
                 Enqueue(child, q);
             }
             cnct = cnct->next;
@@ -262,29 +243,88 @@ void BFS(graph *g, node *src, int *dist, int vertices)
     }
 }
 
-void DFS(graph *g, node *v)
+void DFS(graph *g, int v)
 {
-    g->visit[v->data] = 1;
-    node *child;
-    node *cnct = g->adjl[v->data];
-    printf("%d\n", v->data);
+    g->visit[v] = 1;
+    int child;
+    node *cnct = g->adjl[v];
+    int prev;
+    printf("%d\n", v);
     while (cnct != NULL)
     {
-        child = cnct;
-        if (g->visit[child->data] != 1)
+        child = cnct->data;
+        if (g->visit[child] != 1)
         {
+            if (g->prt[child] == 0)
+            {
+                g->prt[child] = v;
+            }
             DFS(g, child);
         }
+        // else
+        // {
+        //     g->prt[v] = child;
+        // }
         cnct = cnct->next;
     }
 }
 
+int cyclic_checker(int v, int *visit,
+                   int *path, graph *g)
+{
+    if (visit[v] == 0)
+    {
+        visit[v] = 1;
+        path[v] = 1;
+        node *cnct = g->adjl[v];
+        while (cnct != NULL)
+        {
+            if (visit[cnct->data] == 0 && cyclic_checker(cnct->data, visit, path, g))
+                return 1;
+            else if (path[cnct->data])
+                return 1;
+            cnct = cnct->next;
+        }
+    }
+    path[v] = 0;
+    return 0;
+}
+
+int isCyclic(graph *g)
+{
+    int *visit = (int *)malloc((g->numV) * sizeof(int));
+    int *path = (int *)malloc((g->numV) * sizeof(int));
+    for (int i = 0; i < g->numV; i++)
+    {
+        visit[i] = 0;
+        path[i] = 0;
+    }
+
+    for (int i = 0; i < g->numV; i++)
+        if (visit[i] == 0 && cyclic_checker(i, visit, path, g))
+            return 1;
+
+    return 0;
+}
+
+void print_path(int x, graph *g)
+{
+    if (x == 1)
+    {
+        printf("1\n");
+        return;
+    }
+    printf("%d -> ", x);
+    print_path(g->prt[x], g);
+}
+
+//-----------------------------------------------------------------------------------------------------------//
 int main()
 {
-    int n, m, i;
+    int n, m, i, s;
     int x, y, wt;
 
-    scanf("%d %d", &n, &m);
+    scanf("%d %d %d", &n, &m, &s);
 
     graph *g = createGraph(n);
 
@@ -292,9 +332,27 @@ int main()
     {
         scanf("%d %d", &x, &y);
         addEdge(g, x, y);
+        addEdge(g, y, x);
     }
 
-    int *dist = (int *)malloc((n + 1) * sizeof(int));
-    node *source = createNode(3);
-    BFS(g, source, dist, n);
+    DFS(g, s);
+    for (int i = 1; i <= n; i++)
+    {
+        printf("%d -= %d\n", i, g->prt[i]);
+    }
+    for (int i = 2; i <= n; i++)
+    {
+        // if (i == 1)
+        //     continue;
+        print_path(i, g);
+    }
 }
+
+// 6 7 1
+// 1 2
+// 2 3
+// 3 4
+// 3 5
+// 1 6
+// 5 6
+// 3 6
